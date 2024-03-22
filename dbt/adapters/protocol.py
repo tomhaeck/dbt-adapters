@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import (
     Any,
@@ -5,6 +6,7 @@ from typing import (
     Dict,
     Generic,
     Hashable,
+    Iterator,
     List,
     Optional,
     Type,
@@ -143,6 +145,10 @@ class AdapterProtocol(  # type: ignore[misc]
     def set_connection_name(self, name: Optional[str] = None) -> Connection:
         ...
 
+    @contextmanager
+    def connection_named(self, name: str, query_header_context: Any = None) -> Iterator[None]:
+        ...
+
     def cancel_open(self) -> Optional[List[str]]:
         ...
 
@@ -161,6 +167,7 @@ class AdapterProtocol(  # type: ignore[misc]
     def commit(self) -> None:
         ...
 
+    @classmethod
     def close(cls, connection: Connection) -> Connection:
         ...
 
@@ -170,4 +177,10 @@ class AdapterProtocol(  # type: ignore[misc]
     def execute(
         self, sql: str, auto_begin: bool = False, fetch: bool = False
     ) -> Tuple[AdapterResponse, agate.Table]:
+        ...
+
+    def create_schema(self, relation: Relation_T):
+        ...
+
+    def drop_schema(self, relation: Relation_T):
         ...

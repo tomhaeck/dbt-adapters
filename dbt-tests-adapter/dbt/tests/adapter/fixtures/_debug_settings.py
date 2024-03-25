@@ -5,7 +5,7 @@ import pytest
 
 @pytest.fixture
 def debug_settings(request, debug_settings_overrides) -> Dict[str, Any]:
-    settings = {"persist_test_objects": False}
+    settings = {"persist_database_objects": False}
     settings.update(debug_settings_overrides)
     yield settings
 

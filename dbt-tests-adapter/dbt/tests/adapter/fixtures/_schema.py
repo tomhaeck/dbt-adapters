@@ -31,7 +31,6 @@ class _HasQuoting:  # implements HasQuoting protocol
 def schema(
         request,
         unique_schema_name: str,
-        relation_factory: RelationProtocol,
         dbt_runner: DbtRunner,
         debug_settings: Dict[str, Any]
 ) -> RelationProtocol:
@@ -44,32 +43,25 @@ def schema(
     Args:
         request: the test case using the fixture
         unique_schema_name: a name to use as an override, otherwise the test case and a timestamp will be used
-        relation_factory: the relation factory to produce the schema relation
         dbt_runner: the test dbt runner fixture
         debug_settings: these are settings that allow configuration of fixtures without needing to overwrite them
 
     Returns: a unique schema that only exist while in scope, unless configured otherwise via `debug_settings_overrides`
     """
-    quote_policy = relation_factory.get_default_quote_policy()
-    quoting_dict = {
-        "database": quote_policy["database"],
-        "schema": quote_policy["schema"],
-    }
+    quote_policy = dbt_runner.relation_factory.get_default_quote_policy()
     schema_config = _SchemaConfig(
         database=dbt_runner.database,
         schema=unique_schema_name,
-        quoting_dict=quoting_dict,
+        quoting_dict=dict(**quote_policy),
     )
-    unique_schema = relation_factory.create_from(
+    schema = dbt_runner.relation_factory.create_from(
         relation_config=schema_config,
-        quoting=_HasQuoting(quoting_dict),
+        quoting=_HasQuoting(dict(**quote_policy)),
     )
-    with dbt_runner.connection():
-        dbt_runner.create_schema(unique_schema)
-    yield unique_schema
-    if not debug_settings.get("persist_test_objects", False):
-        with dbt_runner.connection():
-            dbt_runner.drop_schema(unique_schema)
+    dbt_runner.create_schema(schema)
+    yield schema
+    if not debug_settings.get("persist_database_objects", False):
+        dbt_runner.drop_schema(schema)
 
 
 @pytest.fixture

@@ -1,82 +1,112 @@
-from typing import Callable, Dict, List, Mapping, Optional
+from collections import defaultdict
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Set
 
-from dbt_common.clients.jinja import MacroProtocol
 import pytest
 
 from dbt.adapters.contracts.macros import MacroResolverProtocol
+from dbt.adapters.factory import get_adapter_package_names
+
+from _macro import MacroProtocol
 
 
 class MacroResolver:
 
-    def __init__(self):
-        self.macros: Mapping[str, MacroProtocol] = {}
-        self.adapter_type = ""
-        self._macros_by_name = {}
+    def __init__(
+            self, macros: List[MacroProtocol], adapter_type: str, profile: Dict[str, Any]
+    ) -> None:
+        self.macros = macros
+        self.adapter_type = adapter_type
+        self.profile = profile
+        self.macros_by_name: Dict[str, Set[MacroProtocol]] = defaultdict(set)
+        for macro in self.macros:
+            self.macros_by_name[macro.name].add(macro)
+        self.macros_by_package: Dict[str, Dict[str, MacroProtocol]] = defaultdict(dict)
 
-    @property
-    def macros_by_name(self) -> Dict[str, List[MacroProtocol]]:
-        if self._macros_by_name is None:
-            self._macros_by_name = self._build_macros_by_name(self.macros)
-        return self._macros_by_name
-
-    @staticmethod
-    def _build_macros_by_name(macros: List[MacroProtocol]) -> Dict[str, List[MacroProtocol]]:
-        macros_by_name: Dict[str, List[MacroProtocol]] = {}
-        for macro in macros:
-            if macro.name not in macros_by_name:
-                macros_by_name[macro.name] = []
-            macros_by_name[macro.name].append(macro)
-        return macros_by_name
+    def add_macro(self, source_file: SourceFile, macro: Macro):
+        self.macros[macro.unique_id] = macro
+        self.macros_by_name[macro.name].add(macro)
+        self.macros_by_package[macro.package_name][macro.name] = macro
+        source_file.macros.append(macro.unique_id)
 
     def find_macro_by_name(
         self, name: str, root_project_name: str, package: Optional[str]
     ) -> Optional[MacroProtocol]:
-        """Find a macro in the graph by its name and package name, or None for
-        any package. The root project name is used to determine priority:
-         - locally defined macros come first
-         - then imported macros
-         - then macros defined in the root project
-        """
-        filter: Optional[Callable[[MacroCandidate], bool]] = None
-        if package is not None:
+        all_macros = {
+            macro for macro in self.macros_by_name.get(name, None)
+            if macro.package_name == package or package is None
+        }
+        internal_packages = get_adapter_package_names(self.adapter_type)
 
-            def filter(candidate: MacroCandidate) -> bool:
-                return package == candidate.macro.package_name
+        if project_macros := {macro for macro in all_macros if macro.package_name == root_project_name}:
+            return project_macros.pop()
+        elif internal_macros := {macro for macro in all_macros if macro.package_name in internal_packages}:
+            return internal_macros.pop()
+        elif all_macros:
+            return all_macros.pop()
+        return None
 
-        candidates: CandidateList = self._find_macros_by_name(
-            name=name,
-            root_project_name=root_project_name,
-            filter=filter,
+    def _macros(self) -> List[MacroProtocol]:
+        @classmethod
+        def load_macros(
+                cls,
+                root_config: RuntimeConfig,
+                macro_hook: Callable[[Manifest], Any],
+                base_macros_only=False,
+        ) -> Manifest:
+            with PARSING_STATE:
+                # base_only/base_macros_only: for testing only,
+                # allows loading macros without running 'dbt deps' first
+                projects = root_config.load_dependencies(base_only=True)
+                macro_manifest = self.create_macro_manifest(root_config, projects.values(), macro_hook)
+
+            return macro_manifest
+    def create_macro_manifest(self, root_config, projects, macro_hook):
+        for project in projects:
+            # what is the manifest passed in actually used for?
+            macro_parser = MacroParser(project, self)
+            for path in macro_parser.get_paths():
+                source_file = load_source_file(path, ParseFileType.Macro, project.project_name, {})
+                block = FileBlock(source_file)
+                macro_parser.parse_file(block)
+        macro_manifest = MacroManifest(self.manifest.macros)
+        return macro_manifest
+
+    def _load_dependencies(self) -> Mapping[str, "RuntimeConfig"]:
+        if self.dependencies is None:
+            all_projects = {self.project_name: self}
+            internal_packages = get_include_paths(self.credentials.type)
+            project_paths = itertools.chain(internal_packages)
+            for project_name, project in self.load_projects(project_paths):
+                all_projects[project_name] = project
+            self.dependencies = all_projects
+        return self.dependencies
+
+    def load_projects(self, paths: Iterable[Path]) -> Iterator[Tuple[str, "RuntimeConfig"]]:
+        for path in paths:
+            project = self.new_project(str(path))
+            yield project.project_name, project
+
+    def new_project(self, project_root: str) -> "RuntimeConfig":
+        # copy profile
+        profile = Profile(**self.profile)
+
+        # load the new project and its packages. Don't pass cli variables.
+        renderer = DbtProjectYamlRenderer(profile)
+        project = Project.from_project_root(
+            project_root,
+            renderer,
+            verify_version=bool(getattr(self.args, "VERSION_CHECK", True)),
         )
 
-        return candidates.last()
-
-    def _find_macros_by_name(
-        self,
-        name: str,
-        root_project_name: str,
-        filter: Optional[Callable[[MacroCandidate], bool]] = None,
-    ) -> CandidateList:
-        """Find macros by their name."""
-        # avoid an import cycle
-        from dbt.adapters.factory import get_adapter_package_names
-
-        candidates: CandidateList = CandidateList()
-
-        macros_by_name = self.macros_by_name
-        if name not in macros_by_name:
-            return candidates
-
-        packages = set(get_adapter_package_names(self.adapter_type))
-        for macro in macros_by_name[name]:
-            candidate = MacroCandidate(
-                locality=_get_locality(macro, root_project_name, packages),
-                macro=macro,
-            )
-            if filter is None or filter(candidate):
-                candidates.append(candidate)
-
-        return candidates
+        runtime_config = self.from_parts(
+            project=project,
+            profile=profile,
+            args=deepcopy(self.args),
+        )
+        # force our quoting back onto the new project.
+        runtime_config.quoting = deepcopy(self.quoting)
+        return runtime_config
 
 
 @pytest.fixture

@@ -1,0 +1,2 @@
+PROJECT_NAME = "test"
+PROJECT_PROFILE = "test"

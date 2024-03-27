@@ -1,0 +1,3 @@
+
+class TestProcessingException(Exception):
+    pass

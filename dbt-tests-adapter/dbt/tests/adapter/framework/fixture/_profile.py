@@ -5,7 +5,7 @@ import yaml
 from _pytest.compat import LEGACY_PATH
 import pytest
 
-from services import write_file
+from ..util import write_file
 
 
 DictConfig = Dict[str, Any]

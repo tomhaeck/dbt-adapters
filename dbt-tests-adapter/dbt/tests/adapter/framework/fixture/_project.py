@@ -13,8 +13,7 @@ import pytest
 
 from dbt.adapters.protocol import AdapterProtocol, RelationProtocol
 
-from _logs import setup_event_logger
-from services import get_connection, run_sql_with_adapter
+from ..util import get_connection, run_sql_with_adapter, setup_event_logger
 
 
 @pytest.fixture

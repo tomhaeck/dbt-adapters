@@ -1,6 +1,7 @@
-import os
 from functools import partial
-from typing import Callable, List
+import json
+import os
+from typing import Any, Callable, Dict, List, Optional
 
 from dbt_common.events.base_types import EventLevel, EventMsg
 from dbt_common.events.event_manager_client import (
@@ -16,7 +17,6 @@ from dbt_common.events.functions import (
 )
 from dbt_common.events.logger import LineFormat, LoggerConfig
 from dbt_common.invocation import get_invocation_id
-import pytest
 
 
 # These are the logging events issued by the "clean" command,
@@ -27,15 +27,31 @@ import pytest
 _NOFILE_CODES = ["Z012", "Z013", "Z014", "Z015"]
 
 
-@pytest.fixture
-def clean_up_logging() -> None:
-    """
-    This fixture ensures that the logging infrastructure does not accidentally
-    reuse streams configured on previous test runs, which might now be closed.
-    It should be run before (and so included as a parameter by) any other fixture
-    which runs functions that might fire events.
-    """
-    cleanup_event_logger()
+def get_logging_events(log_output: str, event_name: str) -> List[Dict[str, Any]]:
+    logging_events = []
+    for log_line in log_output.split("\n"):
+        # skip empty lines
+        if len(log_line) == 0:
+            continue
+        # The adapter logging also shows up, so skip non-json lines
+        if not log_line.startswith("{"):
+            continue
+        if event_name in log_line:
+            log_dct = json.loads(log_line)
+            if log_dct["info"]["name"] == event_name:
+                logging_events.append(log_dct)
+    return logging_events
+
+
+def assert_message_in_logs(message: str, logs: str, expected_pass: Optional[bool] = True) -> None:
+    # if the logs are json strings, then 'jsonify' the message because of things like escape quotes
+    if os.environ.get("DBT_LOG_FORMAT", "") == "json":
+        message = message.replace(r'"', r"\"")
+
+    if expected_pass:
+        assert message in logs
+    else:
+        assert message not in logs
 
 
 def setup_event_logger(flags, callbacks: List[Callable[[EventMsg], None]] = []) -> None:

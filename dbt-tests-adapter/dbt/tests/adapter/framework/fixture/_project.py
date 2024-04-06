@@ -14,6 +14,7 @@ import pytest
 
 from dbt.adapters.protocol import AdapterProtocol, RelationProtocol
 
+from dbt.tests.adapter.framework import default
 from _logging import setup_event_logger
 
 
@@ -68,7 +69,7 @@ class TestProjInfo:
         """
         return get_adapter_by_type(self.adapter_type)
 
-    def get_connection(self, name: Optional[str] = "_test") -> Connection:
+    def get_connection(self, name: Optional[str] = default.CONNECTION_NAME) -> Connection:
         with self.adapter.connection_named(name):
             yield self.adapter.connections.get_thread_connection()
 
@@ -196,7 +197,7 @@ def project(
     # a `load_dependencies` method.
     # Macros gets executed as part of drop_scheme in core/dbt/adapters/sql/impl.py.  When
     # the macros have errors (which is what we're actually testing for...) they end up
-    # throwing CompilationErrorss or DatabaseErrors
+    # throwing CompilationErrors or DatabaseErrors
     try:
         project.drop_test_schema()
     except (KeyError, AttributeError, CompilationError, DbtDatabaseError):

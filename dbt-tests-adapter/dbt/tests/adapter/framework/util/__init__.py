@@ -47,11 +47,6 @@ from _data_type import (
     AnyStringWith,
 )
 from _exception import TestProcessingException
-from _logging import (
-    add_logger_to_manager,
-    get_logging_events,
-    setup_event_logger,
-)
 from _project_file import (
     copy_file,
     file_exists,

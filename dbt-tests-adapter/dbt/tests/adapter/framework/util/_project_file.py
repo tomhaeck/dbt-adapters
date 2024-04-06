@@ -7,6 +7,7 @@ import yaml
 from dbt.adapters.protocol import RelationProtocol
 
 
+# TODO: remove dependency on dbt-core
 from dbt.contracts.graph.manifest import Manifest
 
 

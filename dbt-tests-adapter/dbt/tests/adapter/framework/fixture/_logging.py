@@ -1,6 +1,6 @@
 from functools import partial
 import os
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 from dbt_common.events.base_types import EventLevel, EventMsg
 from dbt_common.events.event_manager_client import (
@@ -14,9 +14,8 @@ from dbt_common.events.functions import (
     get_stdout_config,
     make_log_dir_if_missing,
 )
-from dbt_common.invocation import get_invocation_id
-
 from dbt_common.events.logger import LineFormat, LoggerConfig
+from dbt_common.invocation import get_invocation_id
 import pytest
 
 

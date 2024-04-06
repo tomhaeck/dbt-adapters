@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict
 import yaml
 
+# TODO: refactor to avoid using private attributes
 from _pytest.compat import LEGACY_PATH
 import pytest
 
@@ -73,6 +74,7 @@ def dbt_profile_target() -> DictConfig:
         this fixture can't be used to test vars and env_vars or errors.
         The profile must be written out after the test starts.
     """
+    # TODO: move this into dbt-postgres, this should be {}
     return {
         "type": "postgres",
         "threads": 4,

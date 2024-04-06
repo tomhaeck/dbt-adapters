@@ -6,11 +6,12 @@ from dbt_common.events.types import Note
 
 from dbt.adapters.protocol import AdapterProtocol
 
+from dbt.tests.adapter.framework import default
 from _exception import TestProcessingException
 from _relation import relation_from_name
 
 
-def get_connection(adapter: AdapterProtocol, name: Optional[str] = "_test"):
+def get_connection(adapter: AdapterProtocol, name: Optional[str] = default.CONNECTION_NAME):
     with adapter.connection_named(name):
         yield adapter.connections.get_thread_connection()
 

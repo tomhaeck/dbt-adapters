@@ -9,6 +9,7 @@ from dbt_common.events.functions import (
 )
 
 
+# TODO: remove dependency on dbt-core
 from dbt.cli.main import dbtRunner
 from dbt.logger import log_manager
 

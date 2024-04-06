@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 from dbt_common.clients.jinja import MacroProtocol
 
 
+# TODO: remove dependency on dbt-core
 from dbt.config.runtime import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 from dbt.context.providers import MacroContext, OperationProvider

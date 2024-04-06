@@ -6,7 +6,7 @@ import yaml
 from _pytest.compat import LEGACY_PATH
 import pytest
 
-import _default
+from dbt.tests.adapter.framework import default
 
 
 DictConfig = Dict[str, Any]
@@ -88,8 +88,8 @@ def dbt_project_yml(project_root: LEGACY_PATH, project_config_update: TestConfig
     Combine `project_config_update` with `project_config` defaults.
     """
     project_config = {
-        "name": _default.PROJECT_NAME,
-        "profile": _default.PROJECT_PROFILE,
+        "name": default.PROJECT_NAME,
+        "profile": default.PROJECT_PROFILE,
         "flags": {"send_anonymous_usage_stats": False},
     }
     if project_config_update:

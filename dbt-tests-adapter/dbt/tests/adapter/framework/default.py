@@ -1,2 +1,3 @@
+CONNECTION_NAME = "_test"
 PROJECT_NAME = "test"
 PROJECT_PROFILE = "test"

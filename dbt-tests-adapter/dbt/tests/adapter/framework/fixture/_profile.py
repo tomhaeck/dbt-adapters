@@ -5,8 +5,6 @@ import yaml
 from _pytest.compat import LEGACY_PATH
 import pytest
 
-from ..util import write_file
-
 
 DictConfig = Dict[str, Any]
 
@@ -19,7 +17,8 @@ def profiles_root(tmpdir_factory) -> LEGACY_PATH:
 @pytest.fixture
 def profiles_yml(profiles_root: LEGACY_PATH, dbt_profile_data: DictConfig) -> DictConfig:
     os.environ["DBT_PROFILES_DIR"] = str(profiles_root)
-    write_file(yaml.safe_dump(dbt_profile_data), profiles_root, "profiles.yml")
+    with open(os.path.join(profiles_root, "profiles.yml"), "w", encoding="utf-8") as fp:
+        fp.write(yaml.safe_dump(dbt_profile_data))
     yield dbt_profile_data
     del os.environ["DBT_PROFILES_DIR"]
 

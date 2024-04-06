@@ -1,10 +1,11 @@
+import os
 from typing import Any, Dict, Union
 import yaml
 
+# TODO: refactor this to not use private attributes
 from _pytest.compat import LEGACY_PATH
 import pytest
 
-from ..util import write_file
 import _default
 
 
@@ -72,9 +73,11 @@ def _write_project_files_recursively(
                 data = value
             else:
                 data = yaml.safe_dump(value)
-            _utils.write_file(data, path, name)
+            with open(os.path.join(path, name), "w", encoding="utf-8") as fp:
+                fp.write(data)
         elif name.endswith((".sql", ".csv", ".md", ".txt", ".py")):
-            write_file(value, path, name)
+            with open(os.path.join(path, name), "w", encoding="utf-8") as fp:
+                fp.write(value)
         else:
             _write_project_files_recursively(path.mkdir(name), value)
 

@@ -4,6 +4,7 @@ from typing import Iterator, Optional
 import warnings
 
 import agate
+from dbt.adapters.contracts.connection import Connection
 from dbt.adapters.factory import get_adapter_by_type
 from dbt_common.context import set_invocation_context
 from dbt_common.exceptions import CompilationError, DbtDatabaseError
@@ -13,7 +14,7 @@ import pytest
 
 from dbt.adapters.protocol import AdapterProtocol, RelationProtocol
 
-from ..util import get_connection, run_sql_with_adapter, setup_event_logger
+from _logging import setup_event_logger
 
 
 @pytest.fixture
@@ -67,6 +68,10 @@ class TestProjInfo:
         """
         return get_adapter_by_type(self.adapter_type)
 
+    def get_connection(self, name: Optional[str] = "_test") -> Connection:
+        with self.adapter.connection_named(name):
+            yield self.adapter.connections.get_thread_connection()
+
     def run_sql_file(self, sql_path: str, fetch: Optional[str] = None) -> Iterator[agate.Table]:
         with open(sql_path, "r") as f:
             statements = f.read().split(";")
@@ -74,7 +79,13 @@ class TestProjInfo:
             yield self.run_sql(statement, fetch)
 
     def run_sql(self, sql: str, fetch: Optional[str] = None) -> Optional[agate.Table]:
-        return run_sql_with_adapter(self.adapter, sql, fetch=fetch)
+        kwargs = {
+            "schema": self.adapter.config.credentials.schema,
+            "database": self.adapter.quote(self.adapter.config.credentials.database),
+        }
+        sql = sql.format(**kwargs)
+        with self.get_connection() as conn:
+            return self.adapter.run_sql_for_tests(sql, fetch, conn)
 
     def create_test_schema(self, schema_name: Optional[str] = None) -> RelationProtocol:
         """
@@ -83,14 +94,14 @@ class TestProjInfo:
         """
         if schema_name is None:
             schema_name = self.test_schema
-        with get_connection(self.adapter):
+        with self.get_connection():
             schema = self.adapter.Relation.create(database=self.database, schema=schema_name)
             self.adapter.create_schema(schema)
         self.created_schemas.append(schema_name)
         return schema
 
     def drop_test_schema(self):
-        with get_connection(self.adapter):
+        with self.get_connection():
             for schema_name in self.created_schemas:
                 relation = self.adapter.Relation.create(database=self.database, schema=schema_name)
                 self.adapter.drop_schema(relation)

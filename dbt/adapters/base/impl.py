@@ -312,7 +312,7 @@ class BaseAdapter(metaclass=AdapterMeta):
         """
         This method should be overwritten by adapter maintainers to provide platform-specific flags
         """
-        return []
+        return [{"name": "require_builtin_microbatch_strategy", "default": False}]
 
     ###
     # Methods that pass through to the connection manager
@@ -1570,7 +1570,7 @@ class BaseAdapter(metaclass=AdapterMeta):
 
     def builtin_incremental_strategies(self):
         builtin_strategies = ["append", "delete+insert", "merge", "insert_overwrite"]
-        if os.environ.get("DBT_EXPERIMENTAL_MICROBATCH"):
+        if self.behavior.require_builtin_microbatch_strategy:
             builtin_strategies.append("microbatch")
 
         return builtin_strategies

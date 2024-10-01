@@ -22,7 +22,6 @@ from typing import (
     Union,
     TYPE_CHECKING,
 )
-import os
 import pytz
 from dbt_common.behavior_flags import Behavior, BehaviorFlag
 from dbt_common.clients.jinja import CallableMacroGenerator

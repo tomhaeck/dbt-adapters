@@ -1,6 +1,4 @@
-import os
 from pprint import pformat
-from unittest import mock
 
 import pytest
 
@@ -69,8 +67,8 @@ class BaseMicrobatch:
             "flags": {
                 "require_builtin_microbatch_strategy": True,
             }
-    }
-    
+        }
+
     def test_run_with_event_time(self, project, insert_two_rows_sql):
         # initial run -- backfills all data
         with patch_microbatch_end_time("2020-01-03 13:57:00"):

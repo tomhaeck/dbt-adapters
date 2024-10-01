@@ -312,7 +312,13 @@ class BaseAdapter(metaclass=AdapterMeta):
         """
         This method should be overwritten by adapter maintainers to provide platform-specific flags
         """
-        return [{"name": "require_builtin_microbatch_strategy", "default": False}]
+        return [
+            {
+                "name": "require_builtin_microbatch_strategy",
+                "default": False,
+                "description": "If True, then a builtin `microbatch` materialization strategy can be expected to exist."
+            }
+        ]
 
     ###
     # Methods that pass through to the connection manager
